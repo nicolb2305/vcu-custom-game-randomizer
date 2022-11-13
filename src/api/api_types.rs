@@ -4,6 +4,37 @@ use serde_json::Value;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
+pub struct LolChatConversationMessageResource {
+    pub body: String,
+    pub fromId: Option<String>,
+    pub fromPid: Option<String>,
+    pub fromSummonerId: Option<u64>,
+    pub id: Option<String>,
+    pub isHistorical: Option<bool>,
+    pub timestamp: Option<String>,
+    #[serde(rename = "type")]
+    pub type_: String
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct LolChatConversationResource {
+    pub gameName: String,
+    pub gameTag: String,
+    pub id: String,
+    pub inviterId: String,
+    pub isMuted: bool,
+    pub multiUserChatJWT: String,
+    pub name: String,
+    pub password: String,
+    pub pid: String,
+    pub targetRegion: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub unreadMessageCount: u64,
+    pub lastMessage: Option<LolChatConversationMessageResource>
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub enum LolLobbyLobbyBotDifficulty {
     NONE,
     EASY,

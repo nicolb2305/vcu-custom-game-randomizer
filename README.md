@@ -1,3 +1,3 @@
 # VCU Custom game randomizer
 
-Copies a string to the clipboard containing randomized teams for the League of Legends custom game lobby the player running the program is in
+Randomizes teams in a custom game of League of Legends, and posts the random teams in the lobby chat

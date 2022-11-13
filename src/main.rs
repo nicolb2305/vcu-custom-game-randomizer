@@ -1,45 +1,36 @@
 #![windows_subsystem = "windows"]
 mod api;
-use std::error::Error;
-use api::api_types::LolLobbyLobbyDto;
+use api::api_types::*;
 use shaco;
-use cli_clipboard::{ClipboardContext, ClipboardProvider};
-use serde::Serialize;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 
-fn write_to_clipboard(out_string: &str) -> Result<(), Box<dyn Error>> {
-    let mut ctx = ClipboardContext::new()?;
-    ctx.set_contents(out_string.to_owned())?;
-    Ok(())
-}
-
-fn write_json_to_clipboard<T: Serialize>(json: &T) -> Result<(), Box<dyn Error>> {
-    let out_string = serde_json::to_string(json)?;
-    write_to_clipboard(&out_string)
+fn find_custom_game_chat(conversations: Vec<LolChatConversationResource>) -> Option<LolChatConversationResource> {
+    for conv in conversations {
+        if conv.type_ == "customGame" {
+            return Some(conv);
+        }
+    }
+    None
 }
 
 #[tokio::main]
 async fn main() {
-    let client = shaco::rest::RESTClient::new().expect("Failed to create client.");
+    // Create client
+    let client = shaco::rest::RESTClient::new().unwrap();
 
     // Get lobby info
-    let endpoint = "/lol-lobby/v2/lobby";
-
     let lobby: LolLobbyLobbyDto = serde_json::from_value(
         client
-        .get(endpoint.to_string())
+        .get("/lol-lobby/v2/lobby".to_string())
         .await
         .expect("Failed to fetch from endpoint.")
     ).expect("Failed to deserialize lobby json");
 
-    write_json_to_clipboard(&lobby).expect("Failed to write to clipboard");
-
+    // Randomize players
     let num_players = lobby.members.len();
-
-    let mut temp: Vec<_> = (0..num_players).collect();
-
-    temp.shuffle(&mut thread_rng());
+    let mut player_iterator: Vec<_> = (0..num_players).collect();
+    player_iterator.shuffle(&mut thread_rng());
 
     let mut team_blue = ".\nTeam 1:\n".to_owned();
     let mut team_red = "Team 2:\n".to_owned();
@@ -47,7 +38,7 @@ async fn main() {
     for i in 0..num_players {
         let summoner_name = lobby.members[i].summonerName.clone();
         let with_new_line = format!("{summoner_name}\n");
-        if temp[i] % 2 == 0 {
+        if player_iterator[i] % 2 == 0 {
             team_blue.push_str(&with_new_line);
         } else {
             team_red.push_str(&with_new_line);
@@ -57,5 +48,31 @@ async fn main() {
     team_blue.push_str("----------------------\n");
     team_blue.push_str(&team_red);
 
-    write_to_clipboard(&team_blue).expect("Failed to write to clipboard");
+    // Find custom game chat
+    let conversations: Vec<LolChatConversationResource> = serde_json::from_value(
+        client
+            .get("/lol-chat/v1/conversations".to_string())
+            .await
+            .unwrap()
+    ).unwrap();
+
+    let lobby_conv = find_custom_game_chat(conversations).unwrap();
+
+    // Post teams to custom game chat
+    let lobby_id = lobby_conv.id;
+    let endpoint = format!("/lol-chat/v1/conversations/{lobby_id}/messages");
+
+    let post_body = LolChatConversationMessageResource {
+        body: team_blue,
+        type_: "groupchat".to_string(),
+        fromId: None,
+        fromPid: None,
+        fromSummonerId: None,
+        id: None,
+        isHistorical: None,
+        timestamp: None,
+    };
+
+    let post_body_string = serde_json::to_value(&post_body).unwrap();
+    client.post(endpoint, post_body_string).await.unwrap();
 }
