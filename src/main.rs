@@ -38,10 +38,10 @@ async fn main() {
     for i in 0..num_players {
         let summoner_name = &lobby.members[i].summonerName;
         let with_new_line = format!("{summoner_name}\n");
-        if player_iterator[i] % 2 == 0 {
-            team_blue.push_str(&with_new_line);
-        } else {
-            team_red.push_str(&with_new_line);
+        match player_iterator[i] % 2 {
+            0 => team_blue.push_str(&with_new_line),
+            1 => team_red.push_str(&with_new_line),
+            _ => ()
         }
     }
 
