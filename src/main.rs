@@ -36,7 +36,7 @@ async fn main() {
     let mut team_red = "Team 2:\n".to_owned();
 
     for i in 0..num_players {
-        let summoner_name = lobby.members[i].summonerName.clone();
+        let summoner_name = &lobby.members[i].summonerName;
         let with_new_line = format!("{summoner_name}\n");
         if player_iterator[i] % 2 == 0 {
             team_blue.push_str(&with_new_line);
