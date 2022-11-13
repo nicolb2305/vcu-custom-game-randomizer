@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 mod api;
 use std::error::Error;
 use api::api_types::LolLobbyLobbyDto;
