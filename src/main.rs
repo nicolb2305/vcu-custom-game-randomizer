@@ -2,9 +2,9 @@
     not(debug_assertions),
     windows_subsystem = "windows")
 ]
-mod api;
-use api::api_types::*;
-use shaco;
+use shaco::rest::RESTClient;
+use shaco::api::api_endpoints::{get_lol_lobby_v2_lobby, get_lol_chat_v1_conversations, post_lol_chat_v1_conversations_by_id_messages};
+use shaco::api::api_types::{LolChatConversationMessageResource, LolChatConversationResource};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 
@@ -20,15 +20,10 @@ fn find_custom_game_chat(conversations: Vec<LolChatConversationResource>) -> Opt
 #[tokio::main]
 async fn main() {
     // Create client
-    let client = shaco::rest::RESTClient::new().unwrap();
+    let client = RESTClient::new().unwrap();
 
     // Get lobby info
-    let lobby: LolLobbyLobbyDto = serde_json::from_value(
-        client
-        .get("/lol-lobby/v2/lobby".to_string())
-        .await
-        .expect("Failed to fetch from endpoint.")
-    ).expect("Failed to deserialize lobby json");
+    let lobby = get_lol_lobby_v2_lobby(&client).await.unwrap(); 
 
     // Randomize players
     let num_players = lobby.members.len();
@@ -39,7 +34,7 @@ async fn main() {
     let mut team_red = "Team 2:\n".to_owned();
 
     for i in 0..num_players {
-        let summoner_name = &lobby.members[i].summonerName;
+        let summoner_name = &lobby.members[i].summoner_name;
         let with_new_line = format!("{summoner_name}\n");
         match player_iterator[i] % 2 {
             0 => team_blue.push_str(&with_new_line),
@@ -52,30 +47,24 @@ async fn main() {
     team_blue.push_str(&team_red);
 
     // Find custom game chat
-    let conversations: Vec<LolChatConversationResource> = serde_json::from_value(
-        client
-            .get("/lol-chat/v1/conversations".to_string())
-            .await
-            .unwrap()
-    ).unwrap();
+    let conversations = get_lol_chat_v1_conversations(&client).await.unwrap();
 
     let lobby_conv = find_custom_game_chat(conversations).unwrap();
 
     // Post teams to custom game chat
     let lobby_id = lobby_conv.id;
-    let endpoint = format!("/lol-chat/v1/conversations/{lobby_id}/messages");
 
     let post_body = LolChatConversationMessageResource {
         body: team_blue,
         type_: "groupchat".to_string(),
-        fromId: None,
-        fromPid: None,
-        fromSummonerId: None,
-        id: None,
-        isHistorical: None,
-        timestamp: None,
+        from_id: "".to_string(),
+        id: "".to_string(),
+        from_summoner_id: 0,
+        from_obfuscated_summoner_id: 0,
+        from_pid: "".to_string(),
+        timestamp: "".to_string(),
+        is_historical: false
     };
 
-    let post_body_string = serde_json::to_value(&post_body).unwrap();
-    client.post(endpoint, post_body_string).await.unwrap();
+    post_lol_chat_v1_conversations_by_id_messages(&client, lobby_id, post_body).await.unwrap();
 }
